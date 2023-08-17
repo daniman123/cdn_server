@@ -1,0 +1,56 @@
+// let mut media_engine = MediaEngine::default();
+    // media_engine
+    //     .register_codec(
+    //         RTCRtpCodecParameters {
+    //             capability: RTCRtpCodecCapability {
+    //                 mime_type: MIME_TYPE_H264.to_owned(),
+    //                 clock_rate: 90000,
+    //                 channels: 0,
+    //                 sdp_fmtp_line: "".to_owned(),
+    //                 rtcp_feedback: vec![],
+    //             },
+    //             payload_type: 102,
+    //             ..Default::default()
+    //         },
+    //         RTPCodecType::Video,
+    //     )
+    //     .expect("Failed to add h264 to media engine");
+
+    // let registry = Registry::new();
+    // let registry = register_default_interceptors(registry, &mut media_engine).unwrap();
+    // let api = APIBuilder::new()
+    //     .with_media_engine(media_engine)
+    //     .with_interceptor_registry(registry)
+    //     .build();
+
+    // let config = rtc_config();
+    // let peer_connection = api.new_peer_connection(config).await.unwrap();
+
+    // peer_connection
+    //     .add_transceiver_from_kind(RTPCodecType::Video, None)
+    //     .await
+    //     .unwrap();
+
+    // peer_connection.on_track(Box::new(
+    //     move |track: Arc<TrackRemote>,
+    //           _receiver: Arc<RTCRtpReceiver>,
+    //           _transceiver: Arc<RTCRtpTransceiver>| {
+    //         tokio::spawn(receive_rtp_track_media(track));
+    //         Box::pin(async {})
+    //     },
+    // ));
+
+    // peer_connection.set_remote_description(offer).await.unwrap();
+    // let answer = peer_connection.create_answer(None).await.unwrap();
+    // let mut channel = peer_connection.gathering_complete_promise().await;
+    // peer_connection.set_local_description(answer).await.unwrap();
+    // let _ = channel.recv().await;
+
+    // let answer = peer_connection.local_description().await.unwrap();
+    // let json = serde_json::to_string(&answer).unwrap();
+
+
+    // async fn receive_rtp_track_media(track: Arc<TrackRemote>) {
+//     let track_codec = track.codec();
+//     println!("{:?}", track_codec);
+// }
