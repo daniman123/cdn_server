@@ -1,26 +1,42 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use serde::{Deserialize, Serialize};
 
-use futures_util::lock::Mutex;
-use webrtc::rtp_transceiver::rtp_codec::RTCRtpCodecParameters;
+use std::net::SocketAddr;
+use webrtc::{
+    peer_connection::sdp::session_description::RTCSessionDescription,
+    rtp_transceiver::rtp_codec::RTCRtpCodecParameters,
+};
 
-pub struct RoomContainer {
-    container: HashMap<RTCRtpCodecParameters, Vec<SocketAddr>>,
+use crate::types::Tx;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct ViewerPayload {
+    pub eventType: String,
+    pub roomName: String,
+    pub localDesc: Option<RTCSessionDescription>,
 }
 
-pub struct RoomBroadcastContainer {
-    room: HashMap<String, RoomContainer>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
+pub struct BroadCastPayload {
+    pub eventType: String,
+    pub roomName: String,
+    pub localDesc: Option<RTCSessionDescription>,
 }
 
-pub struct BroadcastRoomMap {
-    room_maps: Arc<Mutex<RoomBroadcastContainer>>,
+#[derive(Clone, Debug)]
+pub struct Room {
+    pub room_users: Vec<(SocketAddr, Tx)>,
+    pub broadcaster: (SocketAddr, Tx),
+    pub broadcast: RTCRtpCodecParameters,
 }
 
-impl RoomBroadcastContainer {
-    pub fn get_room(&self, room_name: String) -> Option<(&String, &RoomContainer)> {
-        self.room.get_key_value(&room_name)
-    }
-
-    pub fn add_user(&self, room_name: String, addr: SocketAddr) {
-        self.room.get_mut(&room_name).unwrap().container.raw_entry_mut(codec).
+impl Room {
+    pub fn create_room(broadcaster: (SocketAddr, Tx)) -> Self {
+        Self {
+            room_users: vec![],
+            broadcaster,
+            broadcast: RTCRtpCodecParameters::default(),
+        }
     }
 }
