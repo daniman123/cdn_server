@@ -1,12 +1,12 @@
+// use tokio::sync::mpsc::Receiver;
 use serde::{Deserialize, Serialize};
-
-use std::net::SocketAddr;
+use std::sync::Arc;
 use webrtc::{
     peer_connection::sdp::session_description::RTCSessionDescription,
-    rtp_transceiver::rtp_codec::RTCRtpCodecParameters,
+    track::track_local::track_local_static_rtp::TrackLocalStaticRTP,
 };
 
-use crate::types::Tx;
+use crate::types::{PeerConn, Tx};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[allow(non_snake_case)]
@@ -24,19 +24,23 @@ pub struct BroadCastPayload {
     pub localDesc: Option<RTCSessionDescription>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Room {
-    pub room_users: Vec<(SocketAddr, Tx)>,
-    pub broadcaster: (SocketAddr, Tx),
-    pub broadcast: RTCRtpCodecParameters,
+    pub room_users: Vec<ViewerMetaData>,
+    pub broadcaster: BroadcasterMetaData,
+    // pub broadcast: Vec<RTCRtpCodecCapability>,
 }
 
-impl Room {
-    pub fn create_room(broadcaster: (SocketAddr, Tx)) -> Self {
-        Self {
-            room_users: vec![],
-            broadcaster,
-            broadcast: RTCRtpCodecParameters::default(),
-        }
-    }
+#[derive(Debug)]
+pub struct BroadcasterMetaData {
+    pub transmiter: Tx,
+    pub broadcaster_peer: PeerConn,
+    pub track_channel_rx: Arc<TrackLocalStaticRTP>,
+    // pub track_channel_rx: Receiver<Arc<TrackLocalStaticRTP>>,
+}
+
+#[derive(Debug)]
+pub struct ViewerMetaData {
+    pub transmiter: Tx,
+    pub viewer_peer: PeerConn,
 }

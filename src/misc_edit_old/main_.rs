@@ -213,7 +213,7 @@ async fn main() -> Result<()> {
 
     if let Some(local_track) = local_track_chan_rx.recv().await {
         loop {
-            println!("\nCurl an base64 SDP to start sendonly peer connection");
+            println!("\nCurl a base64 SDP to start sendonly peer connection");
 
             let line = sdp_chan_rx.recv().await.unwrap();
             let desc_data = signal::decode(line.as_str())?;
