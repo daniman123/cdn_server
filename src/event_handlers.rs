@@ -1,6 +1,6 @@
 use anyhow::Result;
-use tokio::sync::mpsc::Receiver;
 use std::{sync::Arc, time::Duration};
+use tokio::sync::mpsc::Receiver;
 use tokio::sync::Mutex;
 
 use webrtc::{
@@ -48,6 +48,9 @@ pub async fn handle_track_event(
 
         let local_track_chan_tx2 = Arc::clone(&local_track_chan_tx);
         tokio::spawn(async move {
+
+            // println!("{:?}", track.kind());
+
             let local_track = Arc::new(TrackLocalStaticRTP::new(
                 track.codec().capability,
                 "video".to_owned(),
@@ -95,8 +98,10 @@ pub async fn handle_candidate_event(
                     sdp_mid: dater.sdp_mid,
                     sdp_mline_index: dater.sdp_mline_index,
                 };
-                // println!("jeezy {:?}", ice);
-                done3.lock().await.clone().unwrap().send(ice).await.unwrap();
+                let transmitter = done3.lock().await.clone().unwrap();
+                if let Err(err) = transmitter.send(ice).await {
+                    println!("{:?}", err);
+                }
             }
         })
     }));

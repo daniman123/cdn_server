@@ -1,12 +1,9 @@
-// mod broadcaster_role;
 mod event_handlers;
-// mod handlers;
 mod helpers;
 mod models;
 mod roles;
 mod types;
 mod utils;
-// mod viewer_role;
 
 use anyhow::Result;
 use futures_channel::mpsc::unbounded;
@@ -32,7 +29,6 @@ async fn main() -> Result<(), IoError> {
     let listener = try_socket.expect("Failed to bind");
     println!("Listening on: {}", addr);
 
-    // let state = BroadcastRoomMap::new(Mutex::new(HashMap::new()));
     let state = Arc::new(Mutex::new(HashMap::new()));
 
     while let Ok((stream, addr)) = listener.accept().await {
@@ -70,7 +66,6 @@ pub async fn handle_connection(
         future::ok(())
     });
 
-    // println!("{:?}", channel_peer_map.lock().unwrap());
     let receive_from_others = rx.map(Ok).forward(outgoing);
 
     pin_mut!(broadcast_incoming, receive_from_others);

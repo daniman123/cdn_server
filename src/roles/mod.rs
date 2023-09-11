@@ -1,14 +1,12 @@
 pub mod broadcaster;
 pub mod viewer;
-use std::net::SocketAddr;
-
+use self::{broadcaster::process_broadcaster, viewer::process_viewer};
 use crate::{
     models::{BroadCastPayload, ViewerPayload},
     types::{ClientsMap, Tx},
 };
 use serde_json::Value;
-
-use self::{broadcaster::process_broadcaster, viewer::process_viewer};
+use std::net::SocketAddr;
 
 trait DeserializeOwned: Sized {
     fn variant_key() -> &'static str;
@@ -42,22 +40,30 @@ async fn process_payload(
     tx: Tx,
 ) {
     if let Some(Value::Object(raw_payload)) = payload.get(BroadCastPayload::variant_key()) {
-        process_broadcaster(
-            raw_payload,
-            tx.clone(),
-            addr.clone(),
-            channel_peer_map.clone(),
-        )
-        .await;
+        if let Ok(parsed_payload) =
+            serde_json::from_value::<BroadCastPayload>(Value::Object(raw_payload.clone()))
+        {
+            process_broadcaster(
+                parsed_payload,
+                tx.clone(),
+                addr.clone(),
+                channel_peer_map.clone(),
+            )
+            .await;
+        }
     }
     if let Some(Value::Object(raw_payload)) = payload.get(ViewerPayload::variant_key()) {
-        process_viewer(
-            raw_payload,
-            channel_peer_map.clone(),
-            tx.clone(),
-            addr.clone(),
-        )
-        .await;
+        if let Ok(parsed_payload) =
+            serde_json::from_value::<ViewerPayload>(Value::Object(raw_payload.clone()))
+        {
+            process_viewer(
+                parsed_payload,
+                channel_peer_map.clone(),
+                tx.clone(),
+                addr.clone(),
+            )
+            .await;
+        }
     }
 }
 

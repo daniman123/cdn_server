@@ -1,10 +1,8 @@
 use anyhow::Result;
-use serde_json::{json, Map, Value};
+use serde_json::json;
 use std::{net::SocketAddr, sync::Arc};
-// use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use webrtc::{
-    // ice_transport::ice_candidate::RTCIceCandidateInit,
     peer_connection::{
         peer_connection_state::RTCPeerConnectionState,
         sdp::session_description::RTCSessionDescription, RTCPeerConnection,
@@ -20,48 +18,47 @@ use crate::{
 };
 
 pub async fn process_viewer(
-    raw_payload: &Map<String, Value>,
+    parsed_payload: ViewerPayload,
     channel_peer_map: ClientsMap,
     tx: Tx,
     addr: SocketAddr,
 ) {
-    // Handle Viewer payload
-    // TODO - Handle role function
     let mut channels = channel_peer_map.lock().await;
-    if let Ok(parsed_payload) =
-        serde_json::from_value::<ViewerPayload>(Value::Object(raw_payload.clone()))
-    {
-        let room_name = &parsed_payload.roomName;
-        let desc = &parsed_payload.localDesc.unwrap();
 
-        if let Some(room) = channels.get_mut(room_name) {
-            let room_trans = &room.broadcaster.transmiter;
-            if !room_trans.is_closed() {
-                let peer_connection = viewer_peer(room, desc.clone(), tx.clone()).await;
+    let room_name = &parsed_payload.roomName;
+    let event_type = &parsed_payload.eventType;
 
-                let viewer_meta_data = ViewerMetaData {
-                    transmiter: tx.clone(),
-                    viewer_peer: peer_connection,
-                };
+    if event_type == "ENTER_ROOM" {
+        if let Some(desc) = parsed_payload.localDesc {
+            if let Some(room) = channels.get_mut(room_name) {
+                let room_trans = &room.broadcaster.transmiter;
+                if !room_trans.is_closed() {
+                    let peer_connection = viewer_peer(room, desc.clone(), tx.clone()).await;
 
-                room.room_users.push(viewer_meta_data);
-                room.room_users
-                    .retain(|user_socket| !user_socket.transmiter.is_closed());
-                println!("Viewer: {:?} joined room {:?}", addr, room_name);
-            // println!("Rooms: {:?}", channels);
+                    let viewer_meta_data = ViewerMetaData {
+                        transmiter: tx.clone(),
+                        viewer_peer: peer_connection,
+                    };
+
+                    room.room_users.push(viewer_meta_data);
+                    room.room_users
+                        .retain(|user_socket| !user_socket.transmiter.is_closed());
+                    println!("Viewer: {:?} joined room {:?}", addr, room_name);
+                    // println!("Rooms: {:?}", channels);
+                } else {
+                    channels.remove(room_name);
+                    println!("Broadcast @ {:?} is OFFLINE", room_name);
+                    // println!("Rooms: {:?}", channels);
+                }
             } else {
-                channels.remove(room_name);
-                println!("Broadcast @ {:?} is OFFLINE", room_name);
+                println!("Viewer: {addr}, Could not join room: {room_name}");
                 // println!("Rooms: {:?}", channels);
             }
-        } else {
-            println!("Viewer: {addr}, Could not join room: {room_name}");
-            // println!("Rooms: {:?}", channels);
-        };
+        }
     }
 }
 
-pub async fn viewer_peer(
+async fn viewer_peer(
     room: &mut Room,
     desc: RTCSessionDescription,
     tx: Tx,
@@ -69,8 +66,17 @@ pub async fn viewer_peer(
     let local_track = &room.broadcaster.track_channel_rx;
 
     let peer_connection = create_peer_connection().await;
+
+    let track_1 = local_track.get(0).unwrap();
+    let track_2 = local_track.get(1).unwrap();
+
+    peer_connection
+        .add_track(Arc::clone(track_1) as Arc<dyn TrackLocal + Send + Sync>)
+        .await
+        .unwrap();
+
     let rtp_sender = peer_connection
-        .add_track(Arc::clone(&local_track) as Arc<dyn TrackLocal + Send + Sync>)
+        .add_track(Arc::clone(track_2) as Arc<dyn TrackLocal + Send + Sync>)
         .await
         .unwrap();
 

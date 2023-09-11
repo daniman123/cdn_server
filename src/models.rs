@@ -1,4 +1,3 @@
-// use tokio::sync::mpsc::Receiver;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use webrtc::{
@@ -28,15 +27,13 @@ pub struct BroadCastPayload {
 pub struct Room {
     pub room_users: Vec<ViewerMetaData>,
     pub broadcaster: BroadcasterMetaData,
-    // pub broadcast: Vec<RTCRtpCodecCapability>,
 }
 
 #[derive(Debug)]
 pub struct BroadcasterMetaData {
     pub transmiter: Tx,
     pub broadcaster_peer: PeerConn,
-    pub track_channel_rx: Arc<TrackLocalStaticRTP>,
-    // pub track_channel_rx: Receiver<Arc<TrackLocalStaticRTP>>,
+    pub track_channel_rx: Vec<Arc<TrackLocalStaticRTP>>,
 }
 
 #[derive(Debug)]
