@@ -5,11 +5,12 @@ use webrtc::{
 };
 
 use crate::helpers::build_api;
-
+// "stun:stun1.1.google.com:19302", "stun:stun2.1.google.com:19302"
 pub fn rtc_config() -> RTCConfiguration {
     let config = RTCConfiguration {
         ice_servers: vec![RTCIceServer {
-            urls: vec!["stun:stun.l.google.com:19302".to_owned()],
+
+            urls: vec!["stun:stun1.1.google.com:19302".to_owned(), "stun:stun2.1.google.com:19302".to_owned()],
             ..Default::default()
         }],
         ..Default::default()

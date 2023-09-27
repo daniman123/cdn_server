@@ -1,18 +1,14 @@
 use crate::{
-    event_handlers::{handle_candidate_event, handle_track_event},
+    event_handlers::handle_track_event,
+    helpers::peer_helpers::peer_processor,
     models::{BroadcasterMetaData, Room},
     types::{ClientsMap, Tx},
     utils::create_peer_connection,
 };
-use serde_json::json;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::mpsc::Sender;
-use tokio_tungstenite::tungstenite::Message;
 use webrtc::{
-    peer_connection::{
-        peer_connection_state::RTCPeerConnectionState,
-        sdp::session_description::RTCSessionDescription, RTCPeerConnection,
-    },
+    peer_connection::{sdp::session_description::RTCSessionDescription, RTCPeerConnection},
     rtp_transceiver::rtp_codec::RTPCodecType,
     track::track_local::track_local_static_rtp::TrackLocalStaticRTP,
 };
@@ -31,23 +27,16 @@ pub async fn start(
     let mut tracks = Vec::new();
     while tracks.len() < 2 {
         if let Some(track) = local_track_chan_rx.recv().await {
-            // println!("{:?}", track);
             tracks.push(track.clone())
         } else {
             break;
         }
     }
-    // println!("tracks {:?}", tracks);
-    let broadcaster_meta_data = BroadcasterMetaData {
-        transmiter: tx.clone(),
-        broadcaster_peer: peer_connection,
-        track_channel_rx: tracks,
-    };
 
-    let room = Room {
-        broadcaster: broadcaster_meta_data,
-        room_users: vec![],
-    };
+    let broadcaster_meta_data = BroadcasterMetaData::new(tx.clone(), peer_connection, tracks);
+
+    let room = Room::new(broadcaster_meta_data);
+
     println!("Broadcaster: {:?} created room {:?}", addr, room_name);
 
     let mut channels = channel_peer_map.lock().await;
@@ -73,33 +62,5 @@ pub async fn broadcaster_peer(
     let pc = Arc::downgrade(&peer_connection);
     handle_track_event(peer_connection.clone(), pc, local_track_chan_tx).await;
 
-    peer_connection.on_peer_connection_state_change(Box::new(move |s: RTCPeerConnectionState| {
-        println!("Peer Connection State has changed: {s}");
-        Box::pin(async {})
-    }));
-
-    let mut gathering_complete_rx = handle_candidate_event(peer_connection.clone()).await;
-
-    peer_connection.set_remote_description(desc).await.unwrap();
-    let answer = peer_connection.create_answer(None).await.unwrap();
-
-    // Sets the LocalDescription, and starts our UDP listeners
-    peer_connection
-        .set_local_description(answer.clone())
-        .await
-        .unwrap();
-
-    let cand_recv = gathering_complete_rx.recv().await.unwrap();
-    peer_connection.add_ice_candidate(cand_recv).await.unwrap();
-
-    let local_desc = peer_connection.local_description().await.unwrap();
-
-    let payload = json!(local_desc);
-    let answer = Message::Text(payload.to_string());
-
-    if let Err(err) = tx.unbounded_send(answer.clone()) {
-        eprintln!("Failed to send message to recipient: {} {:?}", err, tx);
-    }
-
-    peer_connection
+    peer_processor(peer_connection.clone(), desc, tx.clone()).await
 }

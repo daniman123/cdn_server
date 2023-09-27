@@ -1,20 +1,14 @@
-use anyhow::Result;
-use serde_json::json;
-use std::{net::SocketAddr, sync::Arc};
-use tokio_tungstenite::tungstenite::Message;
-use webrtc::{
-    peer_connection::{
-        peer_connection_state::RTCPeerConnectionState,
-        sdp::session_description::RTCSessionDescription, RTCPeerConnection,
-    },
-    track::track_local::TrackLocal,
-};
-
 use crate::{
-    event_handlers::handle_candidate_event,
+    helpers::peer_helpers::peer_processor,
     models::{Room, ViewerMetaData, ViewerPayload},
     types::{ClientsMap, Tx},
     utils::create_peer_connection,
+};
+use anyhow::Result;
+use std::{net::SocketAddr, sync::Arc};
+use webrtc::{
+    peer_connection::{sdp::session_description::RTCSessionDescription, RTCPeerConnection},
+    track::track_local::TrackLocal,
 };
 
 pub async fn process_viewer(
@@ -44,15 +38,12 @@ pub async fn process_viewer(
                     room.room_users
                         .retain(|user_socket| !user_socket.transmiter.is_closed());
                     println!("Viewer: {:?} joined room {:?}", addr, room_name);
-                    // println!("Rooms: {:?}", channels);
                 } else {
                     channels.remove(room_name);
                     println!("Broadcast @ {:?} is OFFLINE", room_name);
-                    // println!("Rooms: {:?}", channels);
                 }
             } else {
                 println!("Viewer: {addr}, Could not join room: {room_name}");
-                // println!("Rooms: {:?}", channels);
             }
         }
     }
@@ -89,40 +80,5 @@ async fn viewer_peer(
         Result::<()>::Ok(())
     });
 
-    // Set the handler for Peer connection state
-    // This will notify you when the peer has connected/disconnected
-    peer_connection.on_peer_connection_state_change(Box::new(move |s: RTCPeerConnectionState| {
-        println!("Peer Connection State has changed: {s}");
-        Box::pin(async {})
-    }));
-
-    let mut gathering_complete_rx = handle_candidate_event(peer_connection.clone()).await;
-
-    // Set the remote SessionDescription
-    peer_connection
-        .set_remote_description(desc.clone())
-        .await
-        .unwrap();
-
-    // Create an answer
-    let answer = peer_connection.create_answer(None).await.unwrap();
-
-    // Sets the Localdescription, and starts our UDP listeners
-    peer_connection.set_local_description(answer).await.unwrap();
-
-    let cand_recv = gathering_complete_rx.recv().await.unwrap();
-
-    peer_connection.add_ice_candidate(cand_recv).await.unwrap();
-
-    let local_desc = peer_connection.local_description().await.unwrap();
-
-    let payload = json!(local_desc);
-
-    let answer = Message::Text(payload.to_string());
-
-    if let Err(err) = tx.unbounded_send(answer.clone()) {
-        eprintln!("Failed to send message to recipient: {} {:?}", err, tx);
-    }
-
-    peer_connection
+    peer_processor(peer_connection.clone(), desc, tx.clone()).await
 }
